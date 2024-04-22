@@ -3,5 +3,4 @@ transformers
 datasets
 Pillow
 accelerate
-#metadata
-#requests
+bitsandbytes
