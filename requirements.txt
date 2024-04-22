@@ -1,0 +1,7 @@
+torch
+transformers
+datasets
+Pillow
+accelerate
+#metadata
+#requests
