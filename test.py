@@ -8,6 +8,7 @@ import random
 model_id = "llava-hf/llava-1.5-7b-hf"
 
 prompt = "USER: <image>\nWhat are these?\nASSISTANT:"
+expected_output = 'ASSISTANT: This is the digit 5.'
 image_file = "http://images.cocodataset.org/val2017/000000039769.jpg"
 
 model = LlavaForConditionalGeneration.from_pretrained(
