@@ -4,16 +4,8 @@ os.environ['HF_HOME'] = f'/scratch/{getuser()}/datasets'
 
 import torch
 from torchvision import datasets
-from transformers import AutoProcessor, LlavaForConditionalGeneration, LogitsProcessor, LogitsProcessorList
+from transformers import AutoProcessor, LlavaForConditionalGeneration
 from PIL import Image, ImageFilter
-
-class AttentionWeightsProcessor(LogitsProcessor):
-    def __init__(self):
-        self.attention_weights = []
-
-    def __call__(self, input_ids, scores, **kwargs):
-        self.attention_weights.append(kwargs['encoder_hidden_states'][-1])
-        return scores
 
 model_id = "llava-hf/llava-1.5-7b-hf"
 mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, download=True)
@@ -22,6 +14,7 @@ example = mnist[0][0]
 example.save('example.png')
 
 prompt = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT:"
+target = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT: This is the digit 0."
 
 model = LlavaForConditionalGeneration.from_pretrained(
     model_id, 
@@ -36,18 +29,23 @@ processor = AutoProcessor.from_pretrained(model_id)
 img = example
 
 inputs = processor(prompt, img, return_tensors='pt').to(0, torch.float16)
+target_inputs = processor(prompt, target, return_tensors='pt').to(0, torch.float16)
 
-attention_weights_processor = AttentionWeightsProcessor()
-logits_processor = LogitsProcessorList([attention_weights_processor])
+input_ids = inputs['input_ids']
+input_embeddings = model.get_input_embeddings()(input_ids.to(torch.int64))
+input_embeddings.requires_grad = True  # Enable gradient computation for input embeddings
 
-with torch.no_grad():
-    output = model.generate(**inputs, max_new_tokens=200, do_sample=Falsem)
+outputs = model(inputs_embeds=input_embeddings, labels=target_inputs['input_ids'])
 
-# Extract the attention weights
-#attention_weights = attention_weights_processor.attention_weights
+loss = outputs.loss
 
-# Print the generated output
+# Compute gradients with respect to input embeddings
+input_gradients = torch.autograd.grad(loss, input_embeddings)[0]
+
+print(f"Loss: {loss.item()}")
+
+output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
 print(processor.decode(output[0][2:], skip_special_tokens=True))
 
-# Print the shape of the attention weights
-#print("Attention weights shape:", len(attention_weights), attention_weights[0].shape)
+# Print the extracted input gradients
+print(f"Input gradients: {input_gradients}")
