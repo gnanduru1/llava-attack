@@ -40,8 +40,16 @@ target_inputs = processor(target, img, return_tensors='pt').to(0, torch.float16)
 input_ids = inputs['input_ids']
 
 outputs = model(**inputs)
+logits = outputs.logits
 output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
 print(processor.decode(output[0][2:], skip_special_tokens=True))
+
+target_string = "0"
+target = tokenizer.encode(target_string, return_tensors="pt")
+
+loss_fn = torch.nn.CrossEntropyLoss()
+loss = loss_fn(output_logits.view(-1, output_logits.size(-1)), target_ids.view(-1))
+print(loss)
 
 #loss = outputs.loss
 #torch.autograd.grad(loss, inputs['pixel_values'])[0]
