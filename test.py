@@ -37,19 +37,30 @@ inputs['pixel_values'].requires_grad = True
 target_inputs = processor(target, img, return_tensors='pt').to(0, torch.float16)
 
 input_ids = inputs['input_ids']
+for i,id in enumerate(input_ids[0]):
+    print(i, processor.decode(id))
 
 
 outputs = model(**inputs)
 output_logits = outputs.logits
 output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
-print(processor.decode(output[0][2:], skip_special_tokens=True))
+print(processor.decode(output[0], skip_special_tokens=True))
 
 target_string = "0"
 target = processor(target_string, return_tensors="pt")
 
 target_id = target['input_ids'][0,-1]
 
-s = input_ids.shape[1]+1
+#s = input_ids.shape[1]+1
+#print(s)
+
+#output = processor.decode(torch.argmax(output_logits))
+output_ids = torch.argmax(output_logits, dim=-1)
+print(output_ids[0].shape)
+for i,id in enumerate(output_ids[0]):
+    print(i, processor.decode(id))
+
+s = -1
 #need to figure this out
 digit_logits = output_logits[:,s]
 digit = processor.decode(torch.argmax(digit_logits))
