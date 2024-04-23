@@ -6,6 +6,12 @@ import torch
 from torchvision import datasets
 from transformers import AutoProcessor, LlavaForConditionalGeneration
 from PIL import Image, ImageFilter
+import torch.nn.functional as F
+
+def loss_fn(outputs, target, img):
+    logits = outputs.logits[:, -1, :]
+    target_ids = processor(target, img, return_tensors='pt').to(0)
+    return F.cross_entropy(logits, target_ids['input_ids'].squeeze())
 
 # Set the number of iterations and the step size
 num_iterations = 100
@@ -38,24 +44,32 @@ target_inputs = processor(target, img, return_tensors='pt').to(0, torch.float16)
 
 input_ids = inputs['input_ids']
 
-
 outputs = model(**inputs)
-output_logits = outputs.logits
 output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
 print(processor.decode(output[0][2:], skip_special_tokens=True))
-
-target_string = "0"
-target = processor(target_string, return_tensors="pt")
-
-target_ids = target['input_ids']
-
-
-loss_fn = torch.nn.CrossEntropyLoss()
-loss = loss_fn(output_logits.view(-1, output_logits.size(-1)), target_ids.view(-1))
-print(loss)
 
 #loss = outputs.loss
 #torch.autograd.grad(loss, inputs['pixel_values'])[0]
 
 #print(f"Loss: {loss.item()}")
 
+
+# Iterate and update the input image
+for _ in range(num_iterations):
+    # Forward pass
+    outputs = model(**inputs)
+    
+    # Compute the loss
+    loss = loss_fn(outputs, target, img)
+    
+    # Backward pass
+    loss.backward()
+    
+    # Update the input image
+    with torch.no_grad():
+        inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
+        inputs['pixel_values'].grad.zero_()
+
+# Generate the final output
+output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
+print(processor.decode(output[0][2:], skip_special_tokens=True))
