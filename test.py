@@ -1,35 +1,50 @@
-import requests
-from PIL import Image, ImageFilter
+import os
+from getpass import getuser
+os.environ['HF_HOME'] = f'/scratch/{getuser()}/datasets'
 
 import torch
+from torchvision import datasets
 from transformers import AutoProcessor, LlavaForConditionalGeneration
-import random
+from PIL import Image, ImageFilter
+
+# def loss_fn(outputs, target):
+#     logits = outputs.logits[:, -1, :]
+#     target_ids = processor.encode(target, return_tensors='pt').to(0)
+#     return F.cross_entropy(logits, target_ids.squeeze())
 
 model_id = "llava-hf/llava-1.5-7b-hf"
+mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, download=True)
 
-prompt = "USER: <image>\nWhat are these?\nASSISTANT:"
-expected_output = 'ASSISTANT: This is the digit 5.'
-image_file = "http://images.cocodataset.org/val2017/000000039769.jpg"
+example = mnist[0][0]
+example.save('example.png')
+
+prompt = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT:"
+target = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT: This is the digit 0."
 
 model = LlavaForConditionalGeneration.from_pretrained(
     model_id, 
     torch_dtype=torch.float16, 
     low_cpu_mem_usage=True,
-    load_in_4bit=True
+    load_in_4bit=True,
+    local_files_only=True
 )
-
 
 processor = AutoProcessor.from_pretrained(model_id)
 
+img = example
 
-raw_image = Image.open(requests.get(image_file, stream=True).raw)
-raw_image.save('img.jpg')
+inputs = processor(prompt, img, return_tensors='pt').to(0, torch.float16)
+inputs['pixel_values'].requires_grad = True
+target_inputs = processor(target, img, return_tensors='pt').to(0, torch.float16)
 
-im2 = raw_image.filter(ImageFilter.GaussianBlur(30))
-im2.save('img2.jpg')
+input_ids = inputs['input_ids']
 
-
-inputs = processor(prompt, im2, return_tensors='pt').to(0, torch.float16)
-
+outputs = model(**inputs)
 output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
 print(processor.decode(output[0][2:], skip_special_tokens=True))
+
+#loss = outputs.loss
+#torch.autograd.grad(loss, inputs['pixel_values'])[0]
+
+#print(f"Loss: {loss.item()}")
+

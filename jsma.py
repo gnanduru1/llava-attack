@@ -13,7 +13,7 @@ mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, downl
 example = mnist[0][0]
 example.save('example.png')
 
-prompt = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT:"
+prompt = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT: This is the digit 5."
 target = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT: This is the digit 0."
 
 model = LlavaForConditionalGeneration.from_pretrained(
@@ -29,11 +29,12 @@ processor = AutoProcessor.from_pretrained(model_id)
 img = example
 
 inputs = processor(prompt, img, return_tensors='pt').to(0, torch.float16)
-target_inputs = processor(prompt, target, return_tensors='pt').to(0, torch.float16)
+
+target_inputs = processor(target, img, return_tensors='pt').to(0, torch.float16)
 
 input_ids = inputs['input_ids']
 input_embeddings = model.get_input_embeddings()(input_ids.to(torch.int64))
-input_embeddings.requires_grad = True  # Enable gradient computation for input embeddings
+#input_embeddings.requires_grad = True  # Enable gradient computation for input embeddings
 
 outputs = model(inputs_embeds=input_embeddings, labels=target_inputs['input_ids'])
 
