@@ -7,10 +7,9 @@ from torchvision import datasets
 from transformers import AutoProcessor, LlavaForConditionalGeneration
 from PIL import Image, ImageFilter
 
-# def loss_fn(outputs, target):
-#     logits = outputs.logits[:, -1, :]
-#     target_ids = processor.encode(target, return_tensors='pt').to(0)
-#     return F.cross_entropy(logits, target_ids.squeeze())
+# Set the number of iterations and the step size
+num_iterations = 100
+step_size = 0.01
 
 model_id = "llava-hf/llava-1.5-7b-hf"
 mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, download=True)
