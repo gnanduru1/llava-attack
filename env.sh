@@ -1,6 +1,5 @@
 export HF_HOME=/scratch/$USER/.cache
 echo make sure to export HF_TOKEN=\"your_api_token\"
-echo TRANSFORMERS_CACHE=$TRANSFORMERS_CACHE
 echo HF_HOME=$HF_HOME
 
 module purge
