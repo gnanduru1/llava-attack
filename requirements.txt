@@ -4,3 +4,4 @@ datasets
 Pillow
 accelerate
 bitsandbytes
+torchvision
