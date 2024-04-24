@@ -1,23 +1,35 @@
+from util import seed_everything
+seed_everything()
+
 import os
 from getpass import getuser
 os.environ['HF_HOME'] = f'/scratch/{getuser()}/datasets'
 
 import torch
 from torchvision import datasets
+from torchvision.transforms import ToPILImage
 from transformers import AutoProcessor, LlavaForConditionalGeneration
+import torchvision.utils as vutils
 from PIL import Image, ImageFilter
 
 # Set the number of iterations and the step size
 num_iterations = 100
 step_size = 0.01
 
+results_dir = 'results/run1'
+
+if not os.path.exists(f'{results_dir}/tensors'):
+    os.makedirs(f'{results_dir}/tensors', exist_ok = True)
+if not os.path.exists(f'{results_dir}/images'):
+    os.makedirs(f'{results_dir}/images', exist_ok = True)
+
+
 model_id = "llava-hf/llava-1.5-7b-hf"
 mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, download=True)
 
 prompt = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT: "
 example = mnist[0][0]
-label = mnist[0][1] # This is 7
-target = '0' # I want my code to misclassify example as a 0
+label = mnist[0][1] # This is 5
 
 example.save('example.png')
 
@@ -73,3 +85,19 @@ for i in range(num_iterations):
 
     digit = processor.decode(torch.argmax(digit_logits))
     print(f"Iteration {i+1}: Decoded digit: {digit}, loss: {loss}")
+
+    # if digit == target_string:
+    #     print("Verifying")
+    #     output = model.generate(**inputs, max_new_tokens=200, do_sample=False)
+    #     print(processor.decode(output[0][2:], skip_special_tokens=True))
+
+    #     outputs = model(**inputs)
+    #     output_logits = outputs.logits
+
+    #     digit_logits = output_logits[:, s]
+    #     print(processor.decode(torch.argmax(digit_logits)))
+
+    #perturbed_image = ToPILImage()(inputs['pixel_values'][0])
+    #perturbed_image.save(f'results/iteration_{i}.png')
+    vutils.save_image(inputs['pixel_values'], f'{results_dir}/images/{i}.png')
+    torch.save(inputs['pixel_values'], f'{results_dir}/tensors/{i}.pt')
