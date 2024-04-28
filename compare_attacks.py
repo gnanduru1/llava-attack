@@ -11,6 +11,7 @@ from torchvision.transforms import ToPILImage
 import torchvision.utils as vutils
 from PIL import Image, ImageFilter
 import pandas as pd
+import argparse
 from attack_util import get_model_and_processor, save_img, get_mnist_instance, mnist, llava_id
 
 model, processor = get_model_and_processor(llava_id)
@@ -105,35 +106,50 @@ def debug_example(i):
     print(f"Attack 2 distance: {distance_2}")
     save_img(new_img, new_img, f'perturbed_image_{i}', results_dir)
 
-def run_and_compare_attacks(model, mnist, data_range=range(3000)):
+
+def run_and_compare_attacks(model, mnist, id, data_range=range(3000)):
     if torch.cuda.device_count() > 1:
         print(f"{torch.cuda.device_count()} GPUs detected")
         model = torch.nn.DataParallel(model)
-    results = pd.DataFrame(columns=['attack 1 distance', 'attack 1 iters', 'attack 2 distance', 'attack 2 iters'])
+    results = pd.DataFrame(columns=[f'attack {id} distance', f'attack {id} iters'])
+    
+    if id==0:
+        print("Attack 1")
+    elif id==1:
+        print("Attack 2")
+    else:
+        print(f"Invalid id: {id}")
+        return
+    
     for i in tqdm(data_range):
         row = mnist[i]
         inputs, label_id = get_mnist_instance(row, processor)
-        target_id = get_target(inputs, label_id)
-        _, distance_1, iters_1 = attack1(model, inputs, target_id)
-        inputs, label_id = get_mnist_instance(row, processor)
-        _, distance_2, iters_2 = attack2(model, inputs, label_id)
-        results = pd.concat([results, pd.DataFrame({'attack 1 distance': [distance_1], 'attack 1 iters': [iters_1], 'attack 2 distance': [distance_2], 'attack 2 iters': [iters_2]})])
+        
+        if id==0:
+            target_id = get_target(inputs, label_id)
+            _, distance, iters = attack1(model, inputs, target_id)
+        elif id==1:
+            _, distance, iters = attack2(model, inputs, label_id)
+
+        results = pd.concat([results, pd.DataFrame({'attack {id} distance': [distance], 'attack {id} iters': [iters]})])
     return results
 
 
 if __name__ == '__main__':
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--id', type=int, default=0)
+    parser.add_argument('--n', type=int, default=3000)
+    args = parser.parse_args()
+    
     results_dir = 'results'
 
     data_dir = 'data/adv_train'
     os.makedirs(f'{results_dir}/tensors', exist_ok = True)
     os.makedirs(f'{results_dir}/images', exist_ok = True)
 
-    debug_example(0)
+    # debug_example(0)
 
-    if len(sys.argv)>1:
-        n = int(sys.argv[1])
-    else:
-        n = 3000
-    results = run_and_compare_attacks(model, mnist, range(n))
+    results = run_and_compare_attacks(model, mnist, args.id, range(args.n))
     print(results.describe())
-    results.to_csv(f'{results_dir}/compare_attacks.csv')
+    results.to_csv(f'{results_dir}/compare_attacks-{args.id}.csv')
