@@ -1,7 +1,7 @@
 # from util import seed_everything
 # seed_everything()
 
-import os
+import os, sys
 from getpass import getuser
 os.environ['HF_HOME'] = f'/scratch/{getuser()}/datasets'
 
@@ -91,8 +91,6 @@ def attack2(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1,
 
 def debug_example(i):
     inputs, label_id = get_data(mnist[i], processor)
-    # vutils.save_image(inputs['pixel_values'], f'{results_dir}/images/image_{i}.png')
-    # torch.save(inputs['pixel_values'], f'{results_dir}/tensors/image_{i}.pt')
     save_img(inputs['pixel_values'], inputs['pixel_values'], f'image_{i}', results_dir)
 
     target_id = get_target(inputs, label_id)
@@ -107,9 +105,6 @@ def debug_example(i):
     print(f"Attack 1 distance: {distance_1}")
     print(f"Attack 2 took {iters_2} iterations")
     print(f"Attack 2 distance: {distance_2}")
-
-    # vutils.save_image(new_img, f'{results_dir}/images/perturbed_image_{i}.png')
-    # torch.save(new_img, f'{results_dir}/tensors/perturbed_image_{i}.pt')
     save_img(new_img, new_img, f'perturbed_image_{i}', results_dir)
 
 def run_and_compare_attacks(model, mnist, data_range=range(3000)):
@@ -127,26 +122,20 @@ def run_and_compare_attacks(model, mnist, data_range=range(3000)):
         results = pd.concat([results, pd.DataFrame({'attack 1 distance': [distance_1], 'attack 1 iters': [iters_1], 'attack 2 distance': [distance_2], 'attack 2 iters': [iters_2]})])
     return results
 
-# def evaluate_hyper_params(model, mnist, dataset_size=3000):
-#     pass
-
-# def regular_train(model, train_dataset):
-#     pass
-
-# def evaluate(model, mnist, dataset_size=3000):
-#     pass
-
 
 if __name__ == '__main__':
-    # results_dir = 'results/run1'
     results_dir = 'results'
 
     data_dir = 'data/adv_train'
     os.makedirs(f'{results_dir}/tensors', exist_ok = True)
     os.makedirs(f'{results_dir}/images', exist_ok = True)
 
-    #debug_example(0)
+    debug_example(0)
 
-    results = run_and_compare_attacks(model, mnist)
+    if len(sys.argv)>1:
+        n = int(sys.argv[1])
+    else:
+        n = 3000
+    results = run_and_compare_attacks(model, mnist, range(n))
     print(results.describe())
     results.to_csv(f'{results_dir}/compare_attacks.csv')
