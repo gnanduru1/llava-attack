@@ -12,23 +12,9 @@ import torchvision.utils as vutils
 from PIL import Image, ImageFilter
 import pandas as pd
 import argparse
-from attack_util import get_model_and_processor, save_img, get_mnist_instance, mnist, llava_id
+from attack_util import get_model_and_processor, save_img, get_mnist_instance, get_target, mnist, llava_id
 
 model, processor = get_model_and_processor(llava_id)
-
-def get_target(inputs, label_id):
-    output_logits = model(**inputs).logits
-    digit_ids = processor([str(i) for i in range(10)])['input_ids'][:,-1]
-    max_likelihood = 0
-    target_id = 0
-    for digit_id in digit_ids:
-        if digit_id == label_id:
-            continue
-        likelihood = output_logits[0,-1,digit_id.item()]
-        if likelihood >= max_likelihood:
-            max_likelihood = likelihood
-            target_id = digit_id
-    return target_id
 
 
 def loss_fn_1(logits, target, original_image, current_image, alpha=0.1):
@@ -92,7 +78,7 @@ def debug_example(i):
     inputs, label_id = get_mnist_instance(mnist[i], processor)
     save_img(inputs['pixel_values'], inputs['pixel_values'], f'image_{i}', results_dir)
 
-    target_id = get_target(inputs, label_id)
+    target_id = get_target(model, processor, inputs, label_id)
     print(f"Attack 1, target = {processor.decode(target_id)}")
     new_img, distance_1, iters_1 = attack1(model, inputs, target_id, debug=True)
 
@@ -126,7 +112,7 @@ def run_and_compare_attacks(model, mnist, id, data_range=range(3000)):
         inputs, label_id = get_mnist_instance(row, processor)
         
         if id==0:
-            target_id = get_target(inputs, label_id)
+            target_id = get_target(model, processor, inputs, label_id)
             _, distance, iters = attack1(model, inputs, target_id)
         elif id==1:
             _, distance, iters = attack2(model, inputs, label_id)
@@ -148,7 +134,7 @@ if __name__ == '__main__':
     os.makedirs(f'{results_dir}/tensors', exist_ok = True)
     os.makedirs(f'{results_dir}/images', exist_ok = True)
 
-    # debug_example(0)
+    debug_example(0)
 
     results = run_and_compare_attacks(model, mnist, args.id, range(args.n))
     print(results.describe())

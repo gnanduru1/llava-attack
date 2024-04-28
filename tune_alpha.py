@@ -1,4 +1,4 @@
-from attack_util import rad_attack_debug, get_data, get_model_and_processor, mnist, llava_id
+from attack_util import rad_attack_debug, get_mnist_instance, get_model_and_processor, mnist, llava_id
 import torch
 from tqdm import tqdm
 import numpy as np
@@ -14,7 +14,7 @@ def tune_alpha(model, processor, mnist, data_range):
         distances = []
         iterations = []
         for i in tqdm(data_range):
-            inputs, label_id = get_data(mnist[i], processor)
+            inputs, label_id = get_mnist_instance(mnist[i], processor)
             _, distance, iters = rad_attack_debug(model, processor, inputs, label_id, alpha=alpha, debug=False)
             distances.append(distance)
             iterations.append(iters)

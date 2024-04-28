@@ -1,6 +1,7 @@
 from transformers import AutoProcessor, LlavaForConditionalGeneration
 import torch
 import torchvision.utils as vutils
+from datasets import load_dataset
 from torchvision import datasets
 from getpass import getuser
 import random
@@ -52,12 +53,30 @@ def save_img(img, tensor, name, dir):
     vutils.save_image(img, f'{dir}/images/{name}.png')
     torch.save(tensor, f'{dir}/tensors/{name}.pt')
 
-
 def get_mnist_instance(row, processor):
     img, label = row
     inputs = processor(prompt, img, return_tensors='pt').to(0, torch.float16)
     label_id = processor(str(label))['input_ids'][0, -1]
     return inputs, label_id
+
+def get_mnist_dataset(processor, split='train'):
+    dataset = load_dataset('mnist', split=split)
+    transform = lambda img: processor(prompt, img, return_tensors='pt').to(0, torch.float16)
+    return dataset.with_transform(lambda x: {'image': transform(x['image']), 'label': x['label']})
+
+def get_target(model, processor, inputs, label_id):
+    output_logits = model(**inputs).logits
+    digit_ids = processor([str(i) for i in range(10)])['input_ids'][:,-1]
+    max_likelihood = 0
+    target_id = 0
+    for digit_id in digit_ids:
+        if digit_id == label_id:
+            continue
+        likelihood = output_logits[0,-1,digit_id.item()]
+        if likelihood >= max_likelihood:
+            max_likelihood = likelihood
+            target_id = digit_id
+    return target_id
 
 def rad_attack_debug(model, processor, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1, debug=True):
     inputs['pixel_values'].requires_grad = True
