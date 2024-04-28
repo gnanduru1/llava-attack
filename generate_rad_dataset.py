@@ -2,7 +2,7 @@ import torch
 import torchvision.utils as vutils
 from tqdm import tqdm
 import os
-from attack_util import get_data, rad_attack, get_model_and_processor, mnist
+from attack_util import get_data, rad_attack, get_model_and_processor, mnist, llava_id
 
 def generate_adversarial_dataset(model, processor, mnist, data_range, alpha):
     if torch.cuda.device_count() > 1:
@@ -18,7 +18,7 @@ if __name__ == "__main__":
     data_dir = 'data/rad_train'
     os.makedirs(f'{data_dir}/tensors', exist_ok = True)
 
-    model, processor = get_model_and_processor()
+    model, processor = get_model_and_processor(llava_id)
     data_range = range(10000, 20000)
     alpha = 0.1
     generate_adversarial_dataset(model, processor, mnist, data_range, alpha)

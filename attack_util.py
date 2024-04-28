@@ -4,6 +4,7 @@ import torchvision.utils as vutils
 from torchvision import datasets
 from getpass import getuser
 
+llava_id = "llava-hf/llava-1.5-7b-hf"
 mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, download=True)
 prompt = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT: This is the digit "
 
@@ -57,3 +58,24 @@ def get_data(row, processor):
     label_id = processor(str(label))['input_ids'][0, -1]
     return inputs, label_id
 
+def rad_attack_debug(model, processor, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1, debug=True):
+    inputs['pixel_values'].requires_grad = True
+    original_image = inputs['pixel_values'].detach().clone()
+    for i in range(num_iterations):
+        output_logits = model(**inputs).logits
+
+        digit_logits = output_logits[:, -1]
+        loss = rad_loss(digit_logits, label.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
+
+        loss.backward()
+
+        with torch.no_grad():
+            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
+            inputs['pixel_values'].grad.zero_()
+
+        digit_id = torch.argmax(digit_logits)
+        if debug:
+            print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
+        if digit_id != label:
+            return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), i+1
+    return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), num_iterations

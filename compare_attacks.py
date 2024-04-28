@@ -11,12 +11,11 @@ from torchvision.transforms import ToPILImage
 import torchvision.utils as vutils
 from PIL import Image, ImageFilter
 import pandas as pd
-from attack_util import get_model_and_processor, save_img, get_data, mnist
+from attack_util import get_model_and_processor, save_img, get_data, mnist, llava_id
 
 results_dir = 'results/run1'
-model_id = "llava-hf/llava-1.5-7b-hf"
 
-model, processor = get_model_and_processor(model_id)
+model, processor = get_model_and_processor(llava_id)
 
 def get_target(inputs, label_id):
     output_logits = model(**inputs).logits
@@ -113,14 +112,13 @@ def debug_example(i):
     # torch.save(new_img, f'{results_dir}/tensors/perturbed_image_{i}.pt')
     save_img(new_img, new_img, f'perturbed_image_{i}', results_dir)
 
-def run_and_compare_attacks(model, mnist):
+def run_and_compare_attacks(model, mnist, data_range=range(3000)):
     if torch.cuda.device_count() > 1:
         print(f"{torch.cuda.device_count()} GPUs detected")
         model = torch.nn.DataParallel(model)
     results = pd.DataFrame(columns=['attack 1 distance', 'attack 1 iters', 'attack 2 distance', 'attack 2 iters'])
-    for i,row in enumerate(tqdm(mnist)):
-        if i >= 3000:
-            break
+    for i in tqdm(data_range):
+        row = mnist[i]
         inputs, label_id = get_data(row, processor)
         target_id = get_target(inputs, label_id)
         _, distance_1, iters_1 = attack1(model, inputs, target_id)
@@ -129,7 +127,6 @@ def run_and_compare_attacks(model, mnist):
         results = pd.concat([results, pd.DataFrame({'attack 1 distance': [distance_1], 'attack 1 iters': [iters_1], 'attack 2 distance': [distance_2], 'attack 2 iters': [iters_2]})])
     return results
 
-def tune_alpha()
 # def evaluate_hyper_params(model, mnist, dataset_size=3000):
 #     pass
 
@@ -141,7 +138,8 @@ def tune_alpha()
 
 
 if __name__ == '__main__':
-    results_dir = 'results/run1'
+    # results_dir = 'results/run1'
+    results_dir = 'results'
 
     data_dir = 'data/adv_train'
     os.makedirs(f'{results_dir}/tensors', exist_ok = True)
@@ -151,6 +149,4 @@ if __name__ == '__main__':
 
     results = run_and_compare_attacks(model, mnist)
     print(results.describe())
-    results.to_csv(f'{results_dir}/results.csv')
-
-
+    results.to_csv(f'{results_dir}/compare_attacks.csv')
