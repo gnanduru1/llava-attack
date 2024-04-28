@@ -1,5 +1,5 @@
-# from util import seed_everything
-# seed_everything()
+from attack_util import seed_everything
+seed_everything()
 
 import os, sys
 from getpass import getuser
@@ -11,9 +11,7 @@ from torchvision.transforms import ToPILImage
 import torchvision.utils as vutils
 from PIL import Image, ImageFilter
 import pandas as pd
-from attack_util import get_model_and_processor, save_img, get_data, mnist, llava_id
-
-results_dir = 'results/run1'
+from attack_util import get_model_and_processor, save_img, get_mnist_instance, mnist, llava_id
 
 model, processor = get_model_and_processor(llava_id)
 
@@ -90,14 +88,14 @@ def attack2(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1,
     return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), num_iterations
 
 def debug_example(i):
-    inputs, label_id = get_data(mnist[i], processor)
+    inputs, label_id = get_mnist_instance(mnist[i], processor)
     save_img(inputs['pixel_values'], inputs['pixel_values'], f'image_{i}', results_dir)
 
     target_id = get_target(inputs, label_id)
     print(f"Attack 1, target = {processor.decode(target_id)}")
     new_img, distance_1, iters_1 = attack1(model, inputs, target_id, debug=True)
 
-    inputs, label_id = get_data(mnist[i], processor)
+    inputs, label_id = get_mnist_instance(mnist[i], processor)
     print("Attack 2")
     new_img, distance_2, iters_2 = attack2(model, inputs, label_id, debug=True)
 
@@ -114,10 +112,10 @@ def run_and_compare_attacks(model, mnist, data_range=range(3000)):
     results = pd.DataFrame(columns=['attack 1 distance', 'attack 1 iters', 'attack 2 distance', 'attack 2 iters'])
     for i in tqdm(data_range):
         row = mnist[i]
-        inputs, label_id = get_data(row, processor)
+        inputs, label_id = get_mnist_instance(row, processor)
         target_id = get_target(inputs, label_id)
         _, distance_1, iters_1 = attack1(model, inputs, target_id)
-        inputs, label_id = get_data(row, processor)
+        inputs, label_id = get_mnist_instance(row, processor)
         _, distance_2, iters_2 = attack2(model, inputs, label_id)
         results = pd.concat([results, pd.DataFrame({'attack 1 distance': [distance_1], 'attack 1 iters': [iters_1], 'attack 2 distance': [distance_2], 'attack 2 iters': [iters_2]})])
     return results

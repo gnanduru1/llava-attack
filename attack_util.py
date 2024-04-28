@@ -3,6 +3,8 @@ import torch
 import torchvision.utils as vutils
 from torchvision import datasets
 from getpass import getuser
+import random
+import numpy as np
 
 llava_id = "llava-hf/llava-1.5-7b-hf"
 mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, download=True)
@@ -35,7 +37,7 @@ def rad_attack(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0
     return inputs['pixel_values']
 
 
-def get_model_and_processor(model_id):
+def get_model_and_processor(model_id=llava_id):
     model = LlavaForConditionalGeneration.from_pretrained(
         model_id, 
         torch_dtype=torch.float16, 
@@ -46,13 +48,12 @@ def get_model_and_processor(model_id):
     processor = AutoProcessor.from_pretrained(model_id)
     return model, processor
 
-
 def save_img(img, tensor, name, dir):
     vutils.save_image(img, f'{dir}/images/{name}.png')
     torch.save(tensor, f'{dir}/tensors/{name}.pt')
 
 
-def get_data(row, processor):
+def get_mnist_instance(row, processor):
     img, label = row
     inputs = processor(prompt, img, return_tensors='pt').to(0, torch.float16)
     label_id = processor(str(label))['input_ids'][0, -1]
@@ -79,3 +80,14 @@ def rad_attack_debug(model, processor, inputs, label, num_iterations=100, step_s
         if digit_id != label:
             return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), i+1
     return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), num_iterations
+
+def seed_everything(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+
+

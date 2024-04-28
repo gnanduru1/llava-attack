@@ -2,14 +2,14 @@ import torch
 import torchvision.utils as vutils
 from tqdm import tqdm
 import os
-from attack_util import get_data, rad_attack, get_model_and_processor, mnist, llava_id
+from attack_util import get_mnist_instance, rad_attack, get_model_and_processor, mnist, llava_id
 
 def generate_adversarial_dataset(model, processor, mnist, data_range, alpha):
     if torch.cuda.device_count() > 1:
         print(f"{torch.cuda.device_count()} GPUs detected")
         model = torch.nn.DataParallel(model)
     for i in tqdm(data_range):
-        inputs, label_id = get_data(mnist[i], processor)
+        inputs, label_id = get_mnist_instance(mnist[i], processor)
         img = rad_attack(model, inputs, label_id, alpha)
         torch.save(img, f'{data_dir}/tensors/{i}.pt')
 
