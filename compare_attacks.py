@@ -52,6 +52,7 @@ def loss_fn_2(logits, label):
 def attack2(model, inputs, label, num_iterations=100, step_size=0.01, debug=False):
     inputs['pixel_values'].requires_grad = True
     original_image = inputs['pixel_values'].detach().clone()
+    original_image.requires_grad = True
     for i in range(num_iterations):
         output_logits = model(**inputs).logits
 
@@ -76,13 +77,13 @@ def attack2(model, inputs, label, num_iterations=100, step_size=0.01, debug=Fals
 def loss1_regularized(logits, target, original_image, current_image, alpha=0.1):
     adv_loss = torch.nn.CrossEntropyLoss()(logits, target)
     regularizer = torch.nn.MSELoss()(original_image, current_image)
-    print(regularizer)
     return adv_loss + alpha*regularizer
 
 
 def attack3(model, inputs, target, num_iterations=100, step_size=0.01, alpha=0.1, debug=False):
     inputs['pixel_values'].requires_grad = True
     original_image = inputs['pixel_values'].detach().clone()
+    original_image.requires_grad = True
     for i in range(num_iterations):
         output_logits = model(**inputs).logits
 
@@ -108,13 +109,13 @@ def attack3(model, inputs, target, num_iterations=100, step_size=0.01, alpha=0.1
 def loss2_regularized(logits, label, original_image, current_image, alpha=0.1):
     adv_loss = torch.nn.CrossEntropyLoss()(logits, label)
     regularizer = torch.nn.MSELoss()(original_image, current_image)
-    print(regularizer)
     return -adv_loss + alpha*regularizer
 
 
 def attack4(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1, debug=False):
     inputs['pixel_values'].requires_grad = True
     original_image = inputs['pixel_values'].detach().clone()
+    original_image.requires_grad = True
     for i in range(num_iterations):
         output_logits = model(**inputs).logits
 
@@ -144,39 +145,40 @@ def debug_example(i):
     target_id = get_target(model, processor, inputs, label_id)
     print(f"Attack 1&3 target = {processor.decode(target_id)}")
 
+    # print("Attack 1")
     result1 = attack1(model, inputs, target_id, debug=False)
     if result1 == (None, None, None):
         print("Attack 1 failed")
     _, distance_1, iters_1 = result1
+    print(f"Attack: 1 | iters: {iters_1} | distance: {distance_1}")
 
-    del inputs
+    # del inputs
     inputs, label_id = get_mnist_instance(mnist[i], processor)
-    print("Attack 2")
+    # print("Attack 2")
     result2 = attack2(model, inputs, label_id, debug=False)
     if result2 == (None, None, None):
         print("Attack 2 failed")
     _, distance_2, iters_2 = result2
+    print(f"Attack: 2 | iters: {iters_2} | distance: {distance_2}")
 
-    del inputs
+    # del inputs
     inputs, label_id = get_mnist_instance(mnist[i], processor)
-    print(f"Attack 3, target = {processor.decode(target_id)}")
+    # print(f"Attack 3, target = {processor.decode(target_id)}")
     result3 = attack3(model, inputs, target_id, debug=False)
     if result3 == (None, None, None):
         print("Attack 3 failed")
     _, distance_3, iters_3 = result3
+    print(f"Attack: 3 | iters: {iters_3} | distance: {distance_3}")
 
-    del inputs
+    # del inputs
     inputs, label_id = get_mnist_instance(mnist[i], processor)
-    print("Attack 2")
+    # print("Attack 2")
     result4 = attack4(model, inputs, label_id, debug=False)
     if result4 == (None, None, None):
         print("Attack 4 failed")
     new_img, distance_4, iters_4 = result4
-
-    print(f"Attack: 1 | iters: {iters_1} | distance: {distance_1}")
-    print(f"Attack: 2 | iters: {iters_2} | distance: {distance_2}")
-    print(f"Attack: 3 | iters: {iters_3} | distance: {distance_3}")
     print(f"Attack: 4 | iters: {iters_4} | distance: {distance_4}")
+
     # save_img(new_img, new_img, f'perturbed_image_{i}', results_dir)
 
 
@@ -211,7 +213,7 @@ def run_and_compare_attacks(model, mnist, id, data_range=range(3000)):
             target_id = get_target(model, processor, inputs, label_id)
             _, distance, iters = attack3(model, inputs, target_id)
         elif id==3:
-            _, distance, iters = attack2(model, inputs, label_id)
+            _, distance, iters = attack4(model, inputs, label_id)
 
         results = pd.concat([results, pd.DataFrame({'attack {id} distance': [distance], 'attack {id} iters': [iters]})])
         if (i+1)%100==0:
