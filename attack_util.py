@@ -1,4 +1,4 @@
-from transformers import AutoProcessor, LlavaForConditionalGeneration
+from transformers import AutoProcessor, LlavaForConditionalGeneration, BitsAndBytesConfig
 import torch
 import torchvision.utils as vutils
 from datasets import load_dataset
@@ -39,12 +39,19 @@ def rad_attack(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0
 
 
 def get_model_and_processor(model_id=llava_id):
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.float16
+    )
     model = LlavaForConditionalGeneration.from_pretrained(
         model_id, 
         torch_dtype=torch.float16, 
         low_cpu_mem_usage=True,
-        load_in_4bit=True,
-        local_files_only=True
+        # load_in_4bit=True,
+        local_files_only=True,
+        quantization_config=bnb_config
     )
     processor = AutoProcessor.from_pretrained(model_id)
     return model, processor
