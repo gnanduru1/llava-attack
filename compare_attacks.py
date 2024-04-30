@@ -225,7 +225,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', type=int, default=0)
     parser.add_argument('--n', type=int, default=3000)
-    parser.add_argument('--debug', store_true=True)
+    parser.add_argument('--debug', action="store_true")
     args = parser.parse_args()
     
     if args.debug:
