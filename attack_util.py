@@ -62,7 +62,7 @@ def get_mnist_instance(row, processor):
 def get_mnist_dataset(processor, split='train'):
     dataset = load_dataset('mnist', split=split)
     transform = lambda img: processor(prompt, img, return_tensors='pt').to(0, torch.float16)
-    return dataset.with_transform(lambda x: {'image': transform(x['image']), 'label': x['label']})
+    return dataset.with_transform(lambda x: {'input': transform(x['image']), 'label': x['label']})
 
 def get_target(model, processor, inputs, label_id):
     output_logits = model(**inputs).logits
