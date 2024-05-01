@@ -12,136 +12,9 @@ import torchvision.utils as vutils
 from PIL import Image, ImageFilter
 import pandas as pd
 import argparse
-from attack_util import get_model_and_processor, save_img, get_mnist_instance, get_target, mnist, llava_id
+from attack_util import get_model_and_processor, save_img, get_mnist_instance, get_target, attack1, attack2, attack3, attack4, mnist, llava_id
 
 model, processor = get_model_and_processor(llava_id)
-
-def loss_fn_1(logits, target):
-    return torch.nn.CrossEntropyLoss()(logits, target)
-
-
-def attack1(model, inputs, target, num_iterations=100, step_size=0.01, debug=False):
-    inputs['pixel_values'].requires_grad = True
-    original_image = inputs['pixel_values'].detach().clone()
-    for i in range(num_iterations):
-        output_logits = model(**inputs).logits
-
-        digit_logits = output_logits[:, -1]
-        loss = loss_fn_1(digit_logits, target.view(-1).to(digit_logits.device))
-
-        loss.backward()
-
-        with torch.no_grad():
-            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
-            inputs['pixel_values'].grad.zero_()
-
-        digit_id = torch.argmax(digit_logits)
-        if debug:
-            print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
-        if digit_id == target:
-            with torch.no_grad():
-                distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
-            return inputs['pixel_values'], distance, i+1
-    return None, None, None # failure
-
-
-def loss_fn_2(logits, label):
-    return -torch.nn.CrossEntropyLoss()(logits, label)
-
-
-def attack2(model, inputs, label, num_iterations=100, step_size=0.01, debug=False):
-    inputs['pixel_values'].requires_grad = True
-    original_image = inputs['pixel_values'].detach().clone()
-    original_image.requires_grad = True
-    for i in range(num_iterations):
-        output_logits = model(**inputs).logits
-
-        digit_logits = output_logits[:, -1]
-        loss = loss_fn_2(digit_logits, label.view(-1).to(digit_logits.device))
-
-        loss.backward()
-
-        with torch.no_grad():
-            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
-            inputs['pixel_values'].grad.zero_()
-
-        digit_id = torch.argmax(digit_logits)
-        if debug:
-            print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
-        if digit_id != label:
-            with torch.no_grad():
-                distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
-            return inputs['pixel_values'], distance, i+1
-    return None, None, None # failure
-
-def loss1_regularized(logits, target, original_image, current_image, alpha=0.1):
-    adv_loss = torch.nn.CrossEntropyLoss()(logits, target)
-    regularizer = torch.nn.MSELoss()(original_image, current_image)
-    regularizer.retain_grad()
-    return adv_loss + alpha*regularizer
-
-
-def attack3(model, inputs, target, num_iterations=100, step_size=0.01, alpha=0.1, debug=False):
-    inputs['pixel_values'].requires_grad = True
-    original_image = inputs['pixel_values'].detach().clone()
-    original_image.requires_grad = True
-    for i in range(num_iterations):
-        output_logits = model(**inputs).logits
-
-        digit_logits = output_logits[:, -1]
-        loss = loss1_regularized(digit_logits, target.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
-
-        loss.backward()
-
-        with torch.no_grad():
-            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
-            inputs['pixel_values'].grad.zero_()
-
-        digit_id = torch.argmax(digit_logits)
-        if debug:
-            print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
-        if digit_id == target:
-            with torch.no_grad():
-                distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
-            return inputs['pixel_values'], distance, i+1
-    return None, None, None # failure
-
-
-def loss2_regularized(logits, label, original_image, current_image, alpha=0.1):
-    adv_loss = torch.nn.CrossEntropyLoss()(logits, label)
-    regularizer = torch.nn.MSELoss()(original_image, current_image)
-    regularizer.retain_grad()
-    return -adv_loss + alpha*regularizer
-
-
-def attack4(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1, debug=False):
-    inputs['pixel_values'].requires_grad = True
-    original_image = inputs['pixel_values'].detach().clone()
-    original_image.requires_grad = True
-    for i in range(num_iterations):
-        output_logits = model(**inputs).logits
-
-        digit_logits = output_logits[:, -1]
-        # with torch.no_grad():
-        #     inputs['pixel_values'] += 1
-        loss = loss2_regularized(digit_logits, label.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
-
-        loss.backward()
-
-        with torch.no_grad():
-            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
-            inputs['pixel_values'].grad.zero_()
-
-        digit_id = torch.argmax(digit_logits)
-        if debug:
-            print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
-        if digit_id != label:
-            with torch.no_grad():
-                distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
-            return inputs['pixel_values'], distance, i+1
-    return None, None, None # failure
-
-
 def debug_example(i, alpha):
     inputs, label_id = get_mnist_instance(mnist[i], processor)
     # save_img(inputs['pixel_values'], inputs['pixel_values'], f'image_{i}', #results_dir)
@@ -149,7 +22,6 @@ def debug_example(i, alpha):
     target_id = get_target(model, processor, inputs, label_id)
     print(f"Attack 1&3 target = {processor.decode(target_id)}")
 
-    # print("Attack 1")
     result1 = attack1(model, inputs, target_id, debug=False)
     if result1 == (None, None, None):
         print("Attack 1 failed")
@@ -158,7 +30,6 @@ def debug_example(i, alpha):
 
     # del inputs
     inputs, label_id = get_mnist_instance(mnist[i], processor)
-    # print("Attack 2")
     result2 = attack2(model, inputs, label_id, debug=False)
     if result2 == (None, None, None):
         print("Attack 2 failed")
@@ -167,7 +38,6 @@ def debug_example(i, alpha):
 
     # del inputs
     inputs, label_id = get_mnist_instance(mnist[i], processor)
-    # print(f"Attack 3, target = {processor.decode(target_id)}")
     result3 = attack3(model, inputs, target_id, alpha=alpha, debug=False)
     if result3 == (None, None, None):
         print("Attack 3 failed")
@@ -176,7 +46,6 @@ def debug_example(i, alpha):
 
     # del inputs
     inputs, label_id = get_mnist_instance(mnist[i], processor)
-    # print("Attack 2")
     result4 = attack4(model, inputs, label_id, alpha=alpha, debug=False)
     if result4 == (None, None, None):
         print("Attack 4 failed")
@@ -186,7 +55,7 @@ def debug_example(i, alpha):
     # save_img(new_img, new_img, f'perturbed_image_{i}', results_dir)
 
 
-def run_and_compare_attacks(model, mnist, id, alpha=0.1, data_range=range(3000)):
+def run_and_compare_attacks(model, mnist, id, alpha=100, data_range=range(3000)):
     if torch.cuda.device_count() > 1:
         print(f"{torch.cuda.device_count()} GPUs detected")
         model = torch.nn.DataParallel(model)
@@ -222,6 +91,7 @@ def run_and_compare_attacks(model, mnist, id, alpha=0.1, data_range=range(3000))
         results = pd.concat([results, pd.DataFrame({'attack {id} distance': [distance], 'attack {id} iters': [iters]})])
         if (i+1)%100==0:
             print(f"Attack {id} statistics at iteration{i+1}")
+            print("success rate:", len(results.dropna())/len(results))
             print(results.describe())
     return results
 
@@ -237,7 +107,7 @@ if __name__ == '__main__':
     
     if args.debug:
         for i in range(100):
-            print(i)
+            print("example",i)
             debug_example(i, args.alpha)
         exit()
     results_dir = 'results'
@@ -247,5 +117,7 @@ if __name__ == '__main__':
     os.makedirs(f'{results_dir}/images', exist_ok = True)
 
     results = run_and_compare_attacks(model, mnist, args.id, args.alpha, range(args.n))
+    print(f"Attack {args.id} final statistics:")
+    print("success rate:", len(results.dropna())/len(results))
     print(results.describe())
     results.to_csv(f'{results_dir}/compare_attacks-{args.id}.csv')

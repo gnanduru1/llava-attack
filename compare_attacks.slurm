@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH --time=0-01:00:00
-#SBATCH --gres=gpu:a100:2
+#SBATCH --time=3-00:00:00
+#SBATCH --gres=gpu:a100:4
 #SBATCH --partition=gpu
 #SBATCH --job-name=rad-compare-attacks
-#SBATCH --output=%u-%j.out
-#SBATCH --error=%u-%j.err
+#SBATCH --output=%u-%j-comp.out
+#SBATCH --error=%u-%j-comp.err
 #SBATCH --mem=256G
-#SBATCH --array=0-1
+#SBATCH --array=0-3
 
 date
 nvidia-smi
