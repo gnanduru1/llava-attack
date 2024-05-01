@@ -77,6 +77,7 @@ def attack2(model, inputs, label, num_iterations=100, step_size=0.01, debug=Fals
 def loss1_regularized(logits, target, original_image, current_image, alpha=0.1):
     adv_loss = torch.nn.CrossEntropyLoss()(logits, target)
     regularizer = torch.nn.MSELoss()(original_image, current_image)
+    regularizer.retain_grad()
     return adv_loss + alpha*regularizer
 
 
@@ -109,6 +110,7 @@ def attack3(model, inputs, target, num_iterations=100, step_size=0.01, alpha=0.1
 def loss2_regularized(logits, label, original_image, current_image, alpha=0.1):
     adv_loss = torch.nn.CrossEntropyLoss()(logits, label)
     regularizer = torch.nn.MSELoss()(original_image, current_image)
+    regularizer.retain_grad()
     return -adv_loss + alpha*regularizer
 
 
@@ -120,6 +122,8 @@ def attack4(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1,
         output_logits = model(**inputs).logits
 
         digit_logits = output_logits[:, -1]
+        # with torch.no_grad():
+        #     inputs['pixel_values'] += 1
         loss = loss2_regularized(digit_logits, label.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
 
         loss.backward()
@@ -138,7 +142,7 @@ def attack4(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1,
     return None, None, None # failure
 
 
-def debug_example(i):
+def debug_example(i, alpha):
     inputs, label_id = get_mnist_instance(mnist[i], processor)
     # save_img(inputs['pixel_values'], inputs['pixel_values'], f'image_{i}', #results_dir)
 
@@ -164,7 +168,7 @@ def debug_example(i):
     # del inputs
     inputs, label_id = get_mnist_instance(mnist[i], processor)
     # print(f"Attack 3, target = {processor.decode(target_id)}")
-    result3 = attack3(model, inputs, target_id, debug=False)
+    result3 = attack3(model, inputs, target_id, alpha=alpha, debug=False)
     if result3 == (None, None, None):
         print("Attack 3 failed")
     _, distance_3, iters_3 = result3
@@ -173,7 +177,7 @@ def debug_example(i):
     # del inputs
     inputs, label_id = get_mnist_instance(mnist[i], processor)
     # print("Attack 2")
-    result4 = attack4(model, inputs, label_id, debug=False)
+    result4 = attack4(model, inputs, label_id, alpha=alpha, debug=False)
     if result4 == (None, None, None):
         print("Attack 4 failed")
     new_img, distance_4, iters_4 = result4
@@ -182,7 +186,7 @@ def debug_example(i):
     # save_img(new_img, new_img, f'perturbed_image_{i}', results_dir)
 
 
-def run_and_compare_attacks(model, mnist, id, data_range=range(3000)):
+def run_and_compare_attacks(model, mnist, id, alpha=0.1, data_range=range(3000)):
     if torch.cuda.device_count() > 1:
         print(f"{torch.cuda.device_count()} GPUs detected")
         model = torch.nn.DataParallel(model)
@@ -211,9 +215,9 @@ def run_and_compare_attacks(model, mnist, id, data_range=range(3000)):
             _, distance, iters = attack2(model, inputs, label_id)
         elif id==2:
             target_id = get_target(model, processor, inputs, label_id)
-            _, distance, iters = attack3(model, inputs, target_id)
+            _, distance, iters = attack3(model, inputs, target_id, alpha=alpha)
         elif id==3:
-            _, distance, iters = attack4(model, inputs, label_id)
+            _, distance, iters = attack4(model, inputs, label_id, alpha=alpha)
 
         results = pd.concat([results, pd.DataFrame({'attack {id} distance': [distance], 'attack {id} iters': [iters]})])
         if (i+1)%100==0:
@@ -228,12 +232,13 @@ if __name__ == '__main__':
     parser.add_argument('--id', type=int, default=0)
     parser.add_argument('--n', type=int, default=3000)
     parser.add_argument('--debug', action="store_true")
+    parser.add_argument('--alpha', type=float, default=0.1)
     args = parser.parse_args()
     
     if args.debug:
         for i in range(100):
             print(i)
-            debug_example(i)
+            debug_example(i, args.alpha)
         exit()
     results_dir = 'results'
 
@@ -241,6 +246,6 @@ if __name__ == '__main__':
     os.makedirs(f'{results_dir}/tensors', exist_ok = True)
     os.makedirs(f'{results_dir}/images', exist_ok = True)
 
-    results = run_and_compare_attacks(model, mnist, args.id, range(args.n))
+    results = run_and_compare_attacks(model, mnist, args.id, args.alpha, range(args.n))
     print(results.describe())
     results.to_csv(f'{results_dir}/compare_attacks-{args.id}.csv')
