@@ -11,20 +11,17 @@ llava_id = "llava-hf/llava-1.5-7b-hf"
 mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, download=True)
 prompt = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT: This is the digit "
 
-def rad_loss(logits, label, original_image, current_image, alpha=0.1):
-    adv_loss = torch.nn.CrossEntropyLoss()(logits, label)
-    regularizer = torch.nn.MSELoss()(original_image, current_image)
-    return -adv_loss + alpha*regularizer
+def loss_fn_1(logits, target):
+    return torch.nn.CrossEntropyLoss()(logits, target)
 
-
-def rad_attack(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1):
+def attack1(model, inputs, target, num_iterations=100, step_size=0.01, debug=False):
     inputs['pixel_values'].requires_grad = True
     original_image = inputs['pixel_values'].detach().clone()
     for i in range(num_iterations):
         output_logits = model(**inputs).logits
 
         digit_logits = output_logits[:, -1]
-        loss = rad_loss(digit_logits, label.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
+        loss = loss_fn_1(digit_logits, target.view(-1).to(digit_logits.device))
 
         loss.backward()
 
@@ -33,9 +30,148 @@ def rad_attack(model, inputs, label, num_iterations=100, step_size=0.01, alpha=0
             inputs['pixel_values'].grad.zero_()
 
         digit_id = torch.argmax(digit_logits)
+        # if debug:
+        #     print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
+        if digit_id == target:
+            with torch.no_grad():
+                distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
+            return inputs['pixel_values'], distance, i+1
+    return None, None, None # failure
+
+
+def loss_fn_2(logits, label):
+    return -torch.nn.CrossEntropyLoss()(logits, label)
+
+
+def attack2(model, inputs, label, num_iterations=100, step_size=0.01, debug=False):
+    inputs['pixel_values'].requires_grad = True
+    original_image = inputs['pixel_values'].detach().clone()
+    original_image.requires_grad = True
+    for i in range(num_iterations):
+        output_logits = model(**inputs).logits
+
+        digit_logits = output_logits[:, -1]
+        loss = loss_fn_2(digit_logits, label.view(-1).to(digit_logits.device))
+
+        loss.backward()
+
+        with torch.no_grad():
+            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
+            inputs['pixel_values'].grad.zero_()
+
+        digit_id = torch.argmax(digit_logits)
+        if debug:
+            print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
         if digit_id != label:
-            break
-    return inputs['pixel_values']
+            with torch.no_grad():
+                distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
+            return inputs['pixel_values'], distance, i+1
+    return None, None, None # failure
+
+def loss1_regularized(logits, target, original_image, current_image, alpha=100):
+    adv_loss = torch.nn.CrossEntropyLoss()(logits, target)
+    regularizer = torch.nn.MSELoss()(original_image, current_image)
+    # regularizer.retain_graph = True
+    # regularizer.retain_grad()
+    # regularizer.backward(retain_graph=True)
+    # print(regularizer)
+    # adv_loss.backward(retain_graph=True)
+    # print(adv_loss)
+    # exit()
+    return adv_loss + alpha*regularizer
+
+
+def attack3(model, inputs, target, num_iterations=100, step_size=0.01, alpha=100, debug=False):
+    inputs['pixel_values'].requires_grad = True
+    original_image = inputs['pixel_values'].detach().clone()
+    original_image
+    for i in range(num_iterations):
+        output_logits = model(**inputs).logits
+
+        digit_logits = output_logits[:, -1]
+        loss = loss1_regularized(digit_logits, target.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
+
+        loss.backward()
+
+        with torch.no_grad():
+            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
+            inputs['pixel_values'].grad.zero_()
+
+        digit_id = torch.argmax(digit_logits)
+        # if debug:
+        #     print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
+        if digit_id == target:
+            with torch.no_grad():
+                distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
+            return inputs['pixel_values'], distance, i+1
+    return None, None, None # failure
+
+
+def loss2_regularized(logits, label, original_image, current_image, alpha=100):
+    adv_loss = torch.nn.CrossEntropyLoss()(logits, label)
+    regularizer = torch.nn.MSELoss()(original_image, current_image)
+    return -adv_loss + alpha*regularizer
+
+
+def attack4(model, inputs, label, num_iterations=100, step_size=0.01, alpha=100, debug=False):
+    inputs['pixel_values'].requires_grad = True
+    original_image = inputs['pixel_values'].detach().clone()
+    original_image.requires_grad = True
+    for i in range(num_iterations):
+        output_logits = model(**inputs).logits
+
+        digit_logits = output_logits[:, -1]
+
+        loss = loss2_regularized(digit_logits, label.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
+
+        loss.backward()
+
+        with torch.no_grad():
+            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
+            inputs['pixel_values'].grad.zero_()
+
+        digit_id = torch.argmax(digit_logits)
+        # if debug:
+        #     print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
+        if digit_id != label:
+            with torch.no_grad():
+                distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
+            return inputs['pixel_values'], distance, i+1
+    return None, None, None # failure
+
+
+
+# def rad_loss1(logits, target, original_image, current_image, alpha=100):
+#     adv_loss = torch.nn.CrossEntropyLoss()(logits, target)
+#     regularizer = torch.nn.MSELoss()(original_image, current_image)
+#     return adv_loss + alpha*regularizer
+
+# def rad_loss2(logits, label, original_image, current_image, alpha=100):
+#     adv_loss = torch.nn.CrossEntropyLoss()(logits, label)
+#     regularizer = torch.nn.MSELoss()(original_image, current_image)
+#     return -adv_loss + alpha*regularizer
+
+
+
+# def rad_attack(model, inputs, label, num_iterations=100, step_size=0.01, alpha=100):
+#     inputs['pixel_values'].requires_grad = True
+#     original_image = inputs['pixel_values'].detach().clone()
+#     for i in range(num_iterations):
+#         output_logits = model(**inputs).logits
+
+#         digit_logits = output_logits[:, -1]
+#         loss = rad_loss(digit_logits, label.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
+
+#         loss.backward()
+
+#         with torch.no_grad():
+#             inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
+#             inputs['pixel_values'].grad.zero_()
+
+#         digit_id = torch.argmax(digit_logits)
+#         if digit_id != label:
+#             break
+#     return inputs['pixel_values']
 
 
 def get_model_and_processor(model_id=llava_id):
@@ -85,27 +221,50 @@ def get_target(model, processor, inputs, label_id):
             target_id = digit_id
     return target_id
 
-def rad_attack_debug(model, processor, inputs, label, num_iterations=100, step_size=0.01, alpha=0.1, debug=True):
-    inputs['pixel_values'].requires_grad = True
-    original_image = inputs['pixel_values'].detach().clone()
-    for i in range(num_iterations):
-        output_logits = model(**inputs).logits
+# def rad_attack1_debug(model, processor, inputs, target, num_iterations=100, step_size=0.01, alpha=100, debug=True):
+#     inputs['pixel_values'].requires_grad = True
+#     original_image = inputs['pixel_values'].detach().clone()
+#     for i in range(num_iterations):
+#         output_logits = model(**inputs).logits
 
-        digit_logits = output_logits[:, -1]
-        loss = rad_loss(digit_logits, label.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
+#         digit_logits = output_logits[:, -1]
+#         loss = rad_loss1(digit_logits, target.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
 
-        loss.backward()
+#         loss.backward()
 
-        with torch.no_grad():
-            inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
-            inputs['pixel_values'].grad.zero_()
+#         with torch.no_grad():
+#             inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
+#             inputs['pixel_values'].grad.zero_()
 
-        digit_id = torch.argmax(digit_logits)
-        if debug:
-            print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
-        if digit_id != label:
-            return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), i+1
-    return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), num_iterations
+#         digit_id = torch.argmax(digit_logits)
+#         if debug:
+#             print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
+#         if digit_id == target:
+#             return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), i+1
+#     return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), num_iterations
+
+
+# def rad_attack2_debug(model, processor, inputs, label, num_iterations=100, step_size=0.01, alpha=100, debug=True):
+#     inputs['pixel_values'].requires_grad = True
+#     original_image = inputs['pixel_values'].detach().clone()
+#     for i in range(num_iterations):
+#         output_logits = model(**inputs).logits
+
+#         digit_logits = output_logits[:, -1]
+#         loss = rad_loss2(digit_logits, label.view(-1).to(digit_logits.device), original_image, inputs['pixel_values'], alpha=alpha)
+
+#         loss.backward()
+
+#         with torch.no_grad():
+#             inputs['pixel_values'] -= step_size * inputs['pixel_values'].grad
+#             inputs['pixel_values'].grad.zero_()
+
+#         digit_id = torch.argmax(digit_logits)
+#         if debug:
+#             print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
+#         if digit_id != label:
+#             return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), i+1
+#     return inputs['pixel_values'], torch.nn.MSELoss()(original_image, inputs['pixel_values']).item(), num_iterations
 
 def seed_everything(seed=42):
     random.seed(seed)

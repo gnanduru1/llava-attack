@@ -1,8 +1,12 @@
 #!/bin/bash
+# #SBATCH --account=cs6501_sp24
+#SBATCH --partition=bii-gpu
+#SBATCH --account=bii_dsc_community
+#SBATCH --reservation=bi_fox_dgx
 
 #SBATCH --time=3-00:00:00
 #SBATCH --gres=gpu:a100:4
-#SBATCH --partition=gpu
+# #SBATCH --partition=gpu
 #SBATCH --job-name=rad-compare-attacks
 #SBATCH --output=%u-%j-comp.out
 #SBATCH --error=%u-%j-comp.err
