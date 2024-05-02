@@ -102,9 +102,10 @@ if __name__ == '__main__':
     parser.add_argument('--id', type=int, default=0)
     parser.add_argument('--n', type=int, default=3000)
     parser.add_argument('--debug', action="store_true")
-    parser.add_argument('--alpha', type=float, default=0.1)
+    parser.add_argument('--alpha', type=float, default=100)
     args = parser.parse_args()
     
+    print("alpha:", args.alpha)
     if args.debug:
         for i in range(100):
             print("example",i)
