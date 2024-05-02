@@ -123,4 +123,4 @@ if __name__ == '__main__':
     print(f"Attack {args.id} final statistics:")
     print("Success rate:", len(results.dropna())/len(results))
     print(results.describe())
-    results.to_csv(f'{results_dir}/compare_attacks-{args.id}.csv')
+    results.to_csv(f'{results_dir}/compare_attacks-{args.id}.csv', index=False)
