@@ -43,7 +43,7 @@ if __name__ == '__main__':
     model, processor = get_model_and_processor(llava_id)
     data_range = range(args.n)
     results = tune_alpha(model, processor, mnist, data_range, args.id)
-    for alpha, df in results.group_by('alpha'):
+    for alpha, df in results.groupby('alpha'):
         print("alpha:",alpha)
         print("success rate:", len(df.dropna())/len(df))
         print(df.describe())
