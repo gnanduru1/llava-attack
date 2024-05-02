@@ -59,7 +59,6 @@ def run_and_compare_attacks(model, mnist, id, alpha=100, data_range=range(3000))
     if torch.cuda.device_count() > 1:
         print(f"{torch.cuda.device_count()} GPUs detected")
         model = torch.nn.DataParallel(model)
-    results = pd.DataFrame(columns=[f'attack {id} distance', f'attack {id} iters'])
     
     if id==0:
         print("Attack 1")
@@ -73,6 +72,8 @@ def run_and_compare_attacks(model, mnist, id, alpha=100, data_range=range(3000))
         print(f"Invalid id: {id}")
         return
     
+    # results = pd.DataFrame(columns=[f'attack {id} distance', f'attack {id} iters'])
+    results = pd.DataFrame(columns=['distance', 'iters'])
     for i in tqdm(data_range):
         row = mnist[i]
         inputs, label_id = get_mnist_instance(row, processor)
@@ -88,7 +89,8 @@ def run_and_compare_attacks(model, mnist, id, alpha=100, data_range=range(3000))
         elif id==3:
             _, distance, iters = attack4(model, inputs, label_id, alpha=alpha)
 
-        results = pd.concat([results, pd.DataFrame({f'attack {id} distance': [distance], f'attack {id} iters': [iters]})])
+        # results = pd.concat([results, pd.DataFrame({f'attack {id} distance': [distance], f'attack {id} iters': [iters]})])
+        results = pd.concat([results, pd.DataFrame({'distance': [distance], 'iters': [iters]})])
         if (i+1)%100==0:
             print(f"Attack {id} statistics at iteration {i+1}")
             print("success rate:", len(results.dropna())/len(results))
@@ -119,6 +121,6 @@ if __name__ == '__main__':
 
     results = run_and_compare_attacks(model, mnist, args.id, args.alpha, range(args.n))
     print(f"Attack {args.id} final statistics:")
-    print("success rate:", len(results.dropna())/len(results))
+    print("Success rate:", len(results.dropna())/len(results))
     print(results.describe())
     results.to_csv(f'{results_dir}/compare_attacks-{args.id}.csv')
