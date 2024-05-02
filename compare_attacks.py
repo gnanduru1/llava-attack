@@ -88,9 +88,9 @@ def run_and_compare_attacks(model, mnist, id, alpha=100, data_range=range(3000))
         elif id==3:
             _, distance, iters = attack4(model, inputs, label_id, alpha=alpha)
 
-        results = pd.concat([results, pd.DataFrame({'attack {id} distance': [distance], 'attack {id} iters': [iters]})])
+        results = pd.concat([results, pd.DataFrame({f'attack {id} distance': [distance], f'attack {id} iters': [iters]})])
         if (i+1)%100==0:
-            print(f"Attack {id} statistics at iteration{i+1}")
+            print(f"Attack {id} statistics at iteration {i+1}")
             print("success rate:", len(results.dropna())/len(results))
             print(results.describe())
     return results
