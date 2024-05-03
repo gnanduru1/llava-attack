@@ -48,4 +48,4 @@ if __name__ == '__main__':
         print("success rate:", len(df.dropna())/len(df))
         print(df.describe())
         print("\n")
-    results.to_csv(f'{results_dir}/tune_alpha.csv')
+    results.to_csv(f'{results_dir}/tune_alpha-{args.id}.csv')
