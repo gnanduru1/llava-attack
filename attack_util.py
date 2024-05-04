@@ -60,8 +60,8 @@ def attack2(model, inputs, label, num_iterations=100, step_size=0.01, debug=Fals
             inputs['pixel_values'].grad.zero_()
 
         digit_id = torch.argmax(digit_logits)
-        if debug:
-            print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
+        # if debug:
+        #     print(f"Iteration {i+1}: Decoded digit: {processor.decode(digit_id)}, loss: {loss}")
         if digit_id != label:
             with torch.no_grad():
                 distance = torch.nn.MSELoss()(original_image, inputs['pixel_values']).item()
@@ -202,10 +202,12 @@ def get_mnist_instance(row, processor):
     label_id = processor(str(label))['input_ids'][0, -1]
     return inputs, label_id
 
+def transform(processor, images):
+    return [processor(prompt, img, return_tensors='pt').to(0, torch.float16) for img in images['image']]
+
 def get_mnist_dataset(processor, split='train'):
     dataset = load_dataset('mnist', split=split)
-    transform = lambda img: processor(prompt, img, return_tensors='pt').to(0, torch.float16)
-    return dataset.with_transform(lambda x: {'input': transform(x['image']), 'label': x['label']})
+    return dataset.with_transform(lambda x: transform(processor, x))
 
 def get_target(model, processor, inputs, label_id):
     output_logits = model(**inputs).logits
