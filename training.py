@@ -70,7 +70,9 @@ def evaluate(model, data):
         pixel_values = Tensor(data['pixel_values']).squeeze(1)
 
         outputs = model(pixel_values=pixel_values, input_ids=input_ids, attention_mask=attention_mask)
+        print(outputs)
         digit_logits = outputs.logits[:,-1]
+        print(digit_logits)
         loss = torch.nn.CrossEntropyLoss()(digit_logits, label_ids)
 
         digits = torch.argmax(digit_logits, 1)
