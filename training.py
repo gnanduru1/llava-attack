@@ -6,9 +6,9 @@ import torch
 from tqdm import tqdm
 from transformers.feature_extraction_utils import BatchFeature
 from torch import Tensor
-import transforms
 from datasets import Dataset
 import pandas as pd
+from torchvision.transforms.functional import to_pil_image
 
 def train(model, data, num_epochs=1, batch_size=32):
     # dataloader = DataLoader(data, batch_size=batch_size, shuffle=True)
@@ -55,7 +55,8 @@ def get_rad_data(rad_data_dir, processor):
         print(file)
         index, label = file.split('/')[-1].split('-')
         image_tensor = torch.load(file)
-        image_pil = transforms.ToPILImage()(image_tensor)
+        # image_pil = transforms.ToPILImage()(image_tensor)
+        image_pil = to_pil_image(image_tensor)
         # rad_data.append()
         prompt, label_id = get_mnist_instance((image_pil, label), processor)
         for key in prompt.keys():
@@ -79,23 +80,6 @@ def evaluate(model, data):
         correct = torch.sum(digits==label_ids)
         accuracy = correct/label_ids.shape[-1]
         return loss, accuracy
-    
-    # mnist = get_mnist_torchvision(train=False)
-    # for row in mnist:
-    #     prompt, label = get_mnist_instance(row, processor)
-    #     outputs = model(prompt)
-    #     # Select the token with the highest probability
-    #     predicted_id = torch.argmax(outputs.logits[:, -1, :], dim=-1)
-
-
-# def get_mnist_dataset(processor, mnist, data_range):
-#     data = [get_mnist_instance(mnist[i], processor) for i in data_range]
-#     x = [row[0] for row in data]
-#     y = [row[1] for row in data]
-#     dataset_dict = {"data": x, "label": y}
-#     hf_dataset = Dataset.from_dict(dataset_dict).with_format("torch")
-#     return DataLoader(hf_dataset, batch_size=32, shuffle=True)
-
 
 
 if __name__ == '__main__':
@@ -110,13 +94,15 @@ if __name__ == '__main__':
     model, processor = get_model_and_processor()
     batch_size = 32
     rad_data_dir = f"rad_data/tensors-{args.id}"
+    eval_size = 1024
     mnist_train = get_mnist_dataset(processor, split=f'train[:{args.n}]')
-    mnist_test = get_mnist_dataset(processor, split='test[:5]')
+    mnist_test = get_mnist_dataset(processor, split=f'test[:{eval_size}]')
     
     print("Preliminary evaluation")
     loss_before, accuracy_before = evaluate(model, mnist_test)
-    print("Cross-entropy loss:", loss_before.item())
-    print("Accuracy:", accuracy_before.item())
+    print("\tCross-entropy loss:", loss_before.item())
+    print("\tAccuracy:", accuracy_before.item())
+    print(f"{"RAD " if args.rad else ' '}Training:")
     if args.rad:
         # should we handle failed attacks
         train(model, mnist_train, num_epochs=1, batch_size=batch_size)
@@ -127,13 +113,9 @@ if __name__ == '__main__':
 
     print("Post-training evaluation")
     loss_after, accuracy_after = evaluate(model, mnist_test)
-    print("Cross-entropy loss:", loss_after.item())
-    print("Accuracy:", accuracy_after.item())
+    print("\tCross-entropy loss:", loss_after.item())
+    print("\tAccuracy:", accuracy_after.item())
 
-    # Post-training evaluation
-    loss_after, accuracy_after = evaluate(model, mnist_test)
-
-    # Create DataFrame
     data = {
         'loss before': [loss_before.item()],
         'accuracy before': [accuracy_before.item()],
