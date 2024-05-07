@@ -8,8 +8,10 @@ import random
 import numpy as np
 
 llava_id = "llava-hf/llava-1.5-7b-hf"
-mnist = datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=True, download=True)
 prompt = "USER: <image>\nWhat digit [0-9] is this?\nASSISTANT: This is the digit "
+
+def get_mnist_torchvision(train=True):
+    return datasets.MNIST(f'/scratch/{getuser()}/datasets/mnist', train=train, download=True) 
 
 def loss_fn_1(logits, target):
     return torch.nn.CrossEntropyLoss()(logits, target)
@@ -202,12 +204,24 @@ def get_mnist_instance(row, processor):
     label_id = processor(str(label))['input_ids'][0, -1]
     return inputs, label_id
 
-def transform(processor, images):
-    return [processor(prompt, img, return_tensors='pt').to(0, torch.float16) for img in images['image']]
+def transform(processor, data):
+    # label = data['label']
+    # data = processor(prompt, data['image'], return_tensors='pt').to(0, torch.float16)
+    # data['label_id'] = processor(str(label))['input_ids'][0, -1]
+    # try:
+    input = processor(prompt, data['image'], return_tensors='pt').to(0, torch.float16)
+    data['pixel_values'] = input['pixel_values']
+    data['input_ids'] = input['input_ids']
+    data['attention_mask'] = input['attention_mask']
+    data['label_id'] = processor(str(data['label']))['input_ids'][0, -1]
+    # except:
+    #     print("Something went wrong")
+    # data['prompt'] = processor(prompt, data['image'], return_tensors='pt').to(0, torch.float16)
+    return data
 
 def get_mnist_dataset(processor, split='train'):
     dataset = load_dataset('mnist', split=split)
-    return dataset.with_transform(lambda x: transform(processor, x))
+    return dataset.map(lambda x: transform(processor, x), remove_columns=['image', 'label'], batched=False)#, batch_size=256)
 
 def get_target(model, processor, inputs, label_id):
     output_logits = model(**inputs).logits
@@ -276,5 +290,3 @@ def seed_everything(seed=42):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
-
-

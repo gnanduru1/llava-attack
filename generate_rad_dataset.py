@@ -2,7 +2,7 @@ import torch
 import torchvision.utils as vutils
 from tqdm import tqdm
 import os
-from attack_util import get_mnist_instance, attack1, attack2, attack3, attack4, get_model_and_processor, get_target, mnist, llava_id
+from attack_util import get_mnist_instance, attack1, attack2, attack3, attack4, get_model_and_processor, get_target, get_mnist_torchvision, llava_id
 import argparse
 
 def generate_adversarial_dataset(model, processor, mnist, id, data_range, alpha):
@@ -32,10 +32,11 @@ if __name__ == "__main__":
     parser.add_argument('--n', type=int, default=3000)
     parser.add_argument('--alpha', type=float, default=100)
     args = parser.parse_args()
- 
+
     data_dir = f'rad_data/tensors-{args.id}'
     os.makedirs(f'{data_dir}', exist_ok = True)
 
     model, processor = get_model_and_processor(llava_id)
     data_range = range(args.n)
+    mnist = get_mnist_torchvision()
     generate_adversarial_dataset(model, processor, mnist, args.id, data_range, args.alpha)

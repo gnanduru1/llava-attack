@@ -17,5 +17,5 @@ date
 nvidia-smi
 
 source env.sh
-python compare_attacks.py --id $SLURM_ARRAY_TASK_ID --alpha=100 --n 800
+python compare_attacks.py --id $SLURM_ARRAY_TASK_ID --alpha=100 --n 3000
 

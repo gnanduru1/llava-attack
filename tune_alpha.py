@@ -1,4 +1,4 @@
-from attack_util import attack3, attack4, get_mnist_instance, get_model_and_processor, get_target, mnist, llava_id
+from attack_util import seed_everything, attack3, attack4, get_mnist_instance, get_model_and_processor, get_target, get_mnist_torchvision, llava_id
 import torch
 from tqdm import tqdm
 import numpy as np
@@ -11,6 +11,7 @@ def tune_alpha(model, processor, mnist, data_range, id):
         model = torch.nn.DataParallel(model)
     results = pd.DataFrame(columns=['alpha', 'distance', 'iters'])
     for alpha in np.logspace(-1, 4, 12):
+    # for alpha in np.logspace(0, 5, 12): #n=600
         print("alpha =", alpha)
         distances = []
         iterations = []
@@ -27,12 +28,12 @@ def tune_alpha(model, processor, mnist, data_range, id):
     return results
 
 if __name__ == '__main__':
-
+    seed_everything()
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', type=int, default=0)
     parser.add_argument('--n', type=int, default=600)
     args = parser.parse_args()
- 
+
     if args.id == 0:
         print("Attack 3 Finetuning")
     elif args.id ==1:
@@ -42,6 +43,7 @@ if __name__ == '__main__':
     results_dir = 'results'
     model, processor = get_model_and_processor(llava_id)
     data_range = range(args.n)
+    mnist = get_mnist_torchvision()
     results = tune_alpha(model, processor, mnist, data_range, args.id)
     for alpha, df in results.groupby('alpha'):
         print("alpha:",alpha)

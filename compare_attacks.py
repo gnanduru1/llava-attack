@@ -1,5 +1,4 @@
 from attack_util import seed_everything
-seed_everything()
 
 import os, sys
 from getpass import getuser
@@ -12,11 +11,11 @@ import torchvision.utils as vutils
 from PIL import Image, ImageFilter
 import pandas as pd
 import argparse
-from attack_util import get_model_and_processor, save_img, get_mnist_instance, get_target, attack1, attack2, attack3, attack4, mnist, llava_id
+from attack_util import get_model_and_processor, save_img, get_mnist_instance, get_target, attack1, attack2, attack3, attack4, get_mnist_torchvision, llava_id
 
 model, processor = get_model_and_processor(llava_id)
-def debug_example(i, alpha):
-    inputs, label_id = get_mnist_instance(mnist[i], processor)
+def debug_example(mnist_row, alpha):
+    inputs, label_id = get_mnist_instance(mnist_row, processor)
     # save_img(inputs['pixel_values'], inputs['pixel_values'], f'image_{i}', #results_dir)
 
     target_id = get_target(model, processor, inputs, label_id)
@@ -29,7 +28,7 @@ def debug_example(i, alpha):
     print(f"Attack: 1 | iters: {iters_1} | distance: {distance_1}")
 
     # del inputs
-    inputs, label_id = get_mnist_instance(mnist[i], processor)
+    inputs, label_id = get_mnist_instance(mnist_row, processor)
     result2 = attack2(model, inputs, label_id, debug=False)
     if result2 == (None, None, None):
         print("Attack 2 failed")
@@ -37,7 +36,7 @@ def debug_example(i, alpha):
     print(f"Attack: 2 | iters: {iters_2} | distance: {distance_2}")
 
     # del inputs
-    inputs, label_id = get_mnist_instance(mnist[i], processor)
+    inputs, label_id = get_mnist_instance(mnist_row, processor)
     result3 = attack3(model, inputs, target_id, alpha=alpha, debug=False)
     if result3 == (None, None, None):
         print("Attack 3 failed")
@@ -45,7 +44,7 @@ def debug_example(i, alpha):
     print(f"Attack: 3 | iters: {iters_3} | distance: {distance_3}")
 
     # del inputs
-    inputs, label_id = get_mnist_instance(mnist[i], processor)
+    inputs, label_id = get_mnist_instance(mnist_row, processor)
     result4 = attack4(model, inputs, label_id, alpha=alpha, debug=False)
     if result4 == (None, None, None):
         print("Attack 4 failed")
@@ -99,23 +98,23 @@ def run_and_compare_attacks(model, mnist, id, alpha=100, data_range=range(3000))
 
 
 if __name__ == '__main__':
-    
+    seed_everything()
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', type=int, default=0)
     parser.add_argument('--n', type=int, default=3000)
     parser.add_argument('--debug', action="store_true")
     parser.add_argument('--alpha', type=float, default=100)
     args = parser.parse_args()
-    
+
+    mnist = get_mnist_torchvision()
     print("alpha:", args.alpha)
     if args.debug:
         for i in range(100):
             print("example",i)
-            debug_example(i, args.alpha)
+            debug_example(mnist[i], args.alpha)
         exit()
     results_dir = 'results'
 
-    data_dir = 'data/adv_train'
     os.makedirs(f'{results_dir}/tensors', exist_ok = True)
     os.makedirs(f'{results_dir}/images', exist_ok = True)
 
