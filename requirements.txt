@@ -5,3 +5,4 @@ Pillow
 accelerate
 bitsandbytes
 torchvision
+matplotlib
