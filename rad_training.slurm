@@ -17,5 +17,5 @@ date
 nvidia-smi
 
 source env.sh
-python training.py --rad --id $SLURM_ARRAY_TASK_ID --n 3000
+python training.py --rad --id $SLURM_ARRAY_TASK_ID --n 1534
 

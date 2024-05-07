@@ -52,12 +52,9 @@ def get_rad_data(rad_data_dir, processor):
     file_list = glob.glob(os.path.join(rad_data_dir, '*.pt'))
     rad_data = dict(pixel_values=[], input_ids=[], attention_mask=[], label_id=[])
     for file in file_list:
-        print(file)
         index, label = file.split('/')[-1].split('-')
-        image_tensor = torch.load(file)
-        # image_pil = transforms.ToPILImage()(image_tensor)
+        image_tensor = torch.load(file).squeeze()
         image_pil = to_pil_image(image_tensor)
-        # rad_data.append()
         prompt, label_id = get_mnist_instance((image_pil, label), processor)
         for key in prompt.keys():
             rad_data[key].append(prompt[key])
@@ -86,7 +83,8 @@ if __name__ == '__main__':
     seed_everything()
     parser = argparse.ArgumentParser()
     parser.add_argument('--id', type=int, default=0)
-    parser.add_argument('-n','--n', type=int, default=3000)
+    parser.add_argument('-n','--n', type=int, default=1534)
+    #1534 is the minimum number of successful attacks for each of the attacks
     parser.add_argument('--alpha', type=float, default=100)
     parser.add_argument('--rad', action='store_true', default=False)
     args = parser.parse_args()
@@ -94,7 +92,7 @@ if __name__ == '__main__':
     model, processor = get_model_and_processor()
     batch_size = 32
     rad_data_dir = f"rad_data/tensors-{args.id}"
-    eval_size = 1024
+    eval_size = args.n
     mnist_train = get_mnist_dataset(processor, split=f'train[:{args.n}]')
     mnist_test = get_mnist_dataset(processor, split=f'test[:{eval_size}]')
     
@@ -102,11 +100,11 @@ if __name__ == '__main__':
     loss_before, accuracy_before = evaluate(model, mnist_test)
     print("\tCross-entropy loss:", loss_before.item())
     print("\tAccuracy:", accuracy_before.item())
-    print(f"{"RAD " if args.rad else ' '}Training:")
+    print(f"{'RAD ' if args.rad else ''}Training:")
     if args.rad:
         # should we handle failed attacks
         train(model, mnist_train, num_epochs=1, batch_size=batch_size)
-        rad_data = get_rad_data(rad_data_dir)
+        rad_data = get_rad_data(rad_data_dir, processor)[:args.n]
         train(model, rad_data, num_epochs=1, batch_size=batch_size)
     else:
         train(model, mnist_train, num_epochs=2, batch_size=batch_size)

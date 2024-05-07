@@ -7,9 +7,9 @@
 
 #SBATCH --time=3-00:00:00
 #SBATCH --gres=gpu:a100:4
-#SBATCH --job-name=rad-training
-#SBATCH --output=%u-%j-rad-train.out
-#SBATCH --error=%u-%j-rad-train.err
+#SBATCH --job-name=training
+#SBATCH --output=%u-%j-train.out
+#SBATCH --error=%u-%j-train.err
 #SBATCH --mem=256G
 #SBATCH --array=0-3
 
@@ -17,4 +17,4 @@ date
 nvidia-smi
 
 source env.sh
-python training.py --id $SLURM_ARRAY_TASK_ID --n 3000
+python training.py --id $SLURM_ARRAY_TASK_ID --n 1534
