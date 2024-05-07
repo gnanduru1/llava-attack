@@ -14,11 +14,13 @@ for id in range(4):
     print("Average distance:", results['distance'].mean())
     print("Average iterations:", results['iters'].mean())
     successes[id] = len(results.dropna())/len(results)
-    dists[id] = results['distance'].mean()
-    iters[id] = results['iters'].mean()
+    dists[id] = str(results['distance'].mean())
+    iters[id] = str(results['iters'].mean())
     # print(results.describe())
     print("\n")
 
+summary = pd.DataFrame({'Attack \#': list(range(1,5)), 'Average Distance': dists, 'Average Iterations': iters})
+latex_table = summary.to_latex(index=False, caption='Attack Comparison (alpha=100)', label='tab:attack-comparison')
 
 
 results_dir = 'results'
@@ -55,3 +57,5 @@ for id in range(2):
     plt.plot(grouped['alpha'], grouped['iters']['count']/grouped['iters']['size'])
     plt.title(f'Attack {id+3} success rate vs. alpha')
     plt.savefig(f'{results_dir}/success-vs-alpha-{id}')
+
+print(latex_table)
