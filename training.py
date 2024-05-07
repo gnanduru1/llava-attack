@@ -33,20 +33,7 @@ def train(model, data, num_epochs=1, batch_size=32):
             loss.backward()
             optimizer.step()
             print(f"Epoch {epoch}, Loss: {loss.item()}")
-            # outputs = model(pixel_values=Tensor(data['pixel_values']).squeeze(1), input_ids=Tensor(data['input_ids']).squeeze(1), attention_mask=Tensor(data['attention_mask']).squeeze(1))
-            # prompts, labels = batch['prompt'], batch['label_id']
-            # prompts = [BatchFeature(prompt) for prompt in prompts]
-            # outputs = model(prompts[0])
-            # outputs = model.generate(prompts, max_new_tokens=1)
-            # label_ids = Tensor(batch.pop('label_id')).view(-1).long()
-            # outputs = model(**batch)
 
-        # for prompts, labels in dataloader:
-        # for prompt_label in data[index:index+batch_size]:
-            # print(batch['prompt'], batch['label'])
-            # print(prompt_label)
-            # prompts, labels = prompt_label['image'].to(device), prompt_label['label'].to(device)
-            # outputs = model(prompts)
 
 def get_rad_data(rad_data_dir, processor):
     file_list = glob.glob(os.path.join(rad_data_dir, '*.pt'))
