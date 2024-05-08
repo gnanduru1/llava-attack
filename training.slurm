@@ -6,7 +6,7 @@
 # #SBATCH --partition=gpu
 
 #SBATCH --time=3-00:00:00
-#SBATCH --gres=gpu:a100:4
+#SBATCH --gres=gpu:a100:1
 #SBATCH --job-name=training
 #SBATCH --output=%u-%j-train.out
 #SBATCH --error=%u-%j-train.err

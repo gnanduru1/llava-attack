@@ -6,7 +6,7 @@
 #SBATCH --reservation=bi_fox_dgx
 
 #SBATCH --time=3-00:00:00
-#SBATCH --gres=gpu:a100:2
+#SBATCH --gres=gpu:a100:1
 # #SBATCH --partition=gpu
 #SBATCH --job-name=rad-tune-alpha
 #SBATCH --output=%u-%j-tune.out

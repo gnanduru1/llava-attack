@@ -1,12 +1,12 @@
 #!/bin/bash
-# #SBATCH --partition=gpu
-# #SBATCH --account=cs6501_sp24
-#SBATCH --partition=bii-gpu
-#SBATCH --account=bii_dsc_community
-#SBATCH --reservation=bi_fox_dgx
+#SBATCH --partition=gpu
+#SBATCH --account=cs6501_sp24
+# #SBATCH --partition=bii-gpu
+# #SBATCH --account=bii_dsc_community
+# #SBATCH --reservation=bi_fox_dgx
 
 #SBATCH --time=3-00:00:00
-#SBATCH --gres=gpu:a100:4
+#SBATCH --gres=gpu:a100:1
 #SBATCH --job-name=rad-generate-dataset
 #SBATCH --output=%u-%j-data.out
 #SBATCH --error=%u-%j-data.err
