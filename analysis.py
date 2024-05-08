@@ -19,7 +19,7 @@ for id in range(4):
     print("\n")
 
 summary = pd.DataFrame({'Attack \#': list(range(1,5)), 'Average Distance': dists, 'Average Iterations': iters, 'Success Rate': successes})
-latex_table = summary.to_latex(index=False, caption='Attack Comparison (alpha=100)', label='tab:attack-comparison', float_format=lambda x: str(x))
+latex_table = summary.to_latex(index=False, caption='Attack Comparison ($\lambda$=100)', label='tab:attack-comparison', float_format=lambda x: str(x))
 
 
 print("Fine tuning results")
@@ -50,24 +50,23 @@ for id in range(2):
 
     plt.figure(figsize=(16,8))
     plt.plot(success_alpha, success_rates)
-    plt.title(f'Attack {id+3} success rate vs. alpha')
-    plt.xlabel('Alpha')
+    plt.title(f'Attack {id+3} Success Rate vs. $\lambda$')
+    plt.xlabel('$\lambda$')
     plt.ylabel('Success Rate')
-    plt.savefig(f'{results_dir}/success-vs-alpha-{id}')
+    plt.savefig(f'{results_dir}/success-vs-lambda-{id}')
 
     plt.figure(figsize=(16,8))
     plt.errorbar(grouped['alpha'], grouped['distance']['mean'], yerr=grouped['distance']['std'], fmt='o', ecolor='red', capsize=5, elinewidth=2, markersize=5, linestyle='--')#, label='\mu \pm \sigma')
-    plt.title(f'Attack {id+3} distance vs. alpha')
-    plt.xlabel('Alpha')
+    plt.title(f'Attack {id+3} Distance vs. $\lambda$')
+    plt.xlabel('$\lambda$')
     plt.ylabel('Average Distance')
-    plt.savefig(f'{results_dir}/distance-vs-alpha-{id}')
+    plt.savefig(f'{results_dir}/distance-vs-lambda-{id}')
 
     plt.figure(figsize=(16,8))
     plt.errorbar(grouped['alpha'], grouped['iters']['mean'], yerr=grouped['iters']['std'], fmt='o', ecolor='red', capsize=5, elinewidth=2, markersize=5, linestyle='--')
-    plt.title(f'Attack {id+3} iterations vs. alpha')
-    plt.xlabel('Alpha')
+    plt.title(f'Attack {id+3} iterations vs. $\lambda$')
+    plt.xlabel('$\lambda$')
     plt.ylabel('Average Iterations')
-    plt.savefig(f'{results_dir}/iters-vs-alpha-{id}')
-
+    plt.savefig(f'{results_dir}/iters-vs-lambda-{id}')
 
 print(latex_table)
