@@ -11,7 +11,6 @@
 #SBATCH --output=%u-%j-train.out
 #SBATCH --error=%u-%j-train.err
 #SBATCH --mem=256G
-#SBATCH --array=0-3
 
 date
 nvidia-smi
