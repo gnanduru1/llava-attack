@@ -1,4 +1,4 @@
-from util import seed_everything
+from attack_util import seed_everything
 seed_everything()
 
 import os
